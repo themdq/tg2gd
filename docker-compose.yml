@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booksync
+      POSTGRES_PASSWORD: booksync
+      POSTGRES_DB: booksync
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booksync"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bot:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://booksync:booksync@db:5432/booksync
+    volumes:
+      - .:/app
+      - /app/.venv  # Exclude .venv from mount
+    command: uv run --with watchfiles watchfiles --filter python 'python main.py' .
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
