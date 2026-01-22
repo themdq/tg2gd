@@ -120,7 +120,7 @@ async def handle_oauth_code(message: Message) -> None:
         await message.answer(
             f"Successfully connected to Google Drive as {email}!\n"
             "You can now send files and I'll upload them to your Drive.\n\n"
-            "Use /setfolder <name> to specify a folder for uploads."
+            "Use /setfolder FolderName to specify a folder for uploads."
         )
     except Exception:
         logging.exception("OAuth code exchange failed")

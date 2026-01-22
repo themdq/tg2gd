@@ -21,6 +21,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql://booksync:booksync@db:5432/booksync
+      OAUTHLIB_RELAX_TOKEN_SCOPE: "1"
     volumes:
       - .:/app
       - /app/.venv  # Exclude .venv from mount

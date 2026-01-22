@@ -8,6 +8,6 @@ GOOGLE_REDIRECT_URI = "http://localhost"
 
 GOOGLE_SCOPES = [
     "openid",
-    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/userinfo.email",
 ]
