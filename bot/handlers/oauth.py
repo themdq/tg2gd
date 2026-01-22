@@ -11,8 +11,10 @@ from db.queries import (
     save_oauth_token,
     get_oauth_token,
     delete_oauth_token,
+    update_folder_id,
 )
 from services.google_auth import generate_auth_url, exchange_code, get_user_email
+from services.google_drive import create_credentials, find_or_create_folder
 
 router = Router()
 
@@ -117,11 +119,64 @@ async def handle_oauth_code(message: Message) -> None:
 
         await message.answer(
             f"Successfully connected to Google Drive as {email}!\n"
-            "You can now send files and I'll upload them to your Drive."
+            "You can now send files and I'll upload them to your Drive.\n\n"
+            "Use /setfolder <name> to specify a folder for uploads."
         )
     except Exception:
         logging.exception("OAuth code exchange failed")
         await message.answer(
             "Failed to connect. The code may be invalid or expired.\n"
             "Please try /connect again."
+        )
+
+
+@router.message(Command("setfolder"))
+async def command_setfolder(message: Message) -> None:
+    """Set upload folder for Google Drive."""
+    if not message.from_user or not message.text:
+        return
+
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    topic_id = message.message_thread_id
+
+    # Check for active connection
+    token = await get_oauth_token(user_id, chat_id, topic_id)
+    if not token:
+        location = "this topic" if topic_id else "this chat"
+        await message.answer(
+            f"Not connected to Google Drive for {location}.\n"
+            "Use /connect to link your account first."
+        )
+        return
+
+    # Parse folder name from command
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer(
+            "Please specify a folder name.\n"
+            "Usage: /setfolder FolderName\n"
+            "Example: /setfolder MyBooks"
+        )
+        return
+
+    folder_name = parts[1].strip()
+    if not folder_name:
+        await message.answer("Folder name cannot be empty.")
+        return
+
+    status_msg = await message.answer(f"Setting up folder '{folder_name}'...")
+
+    try:
+        credentials = create_credentials(token["access_token"], token["refresh_token"])
+        folder_id = find_or_create_folder(credentials, folder_name)
+        await update_folder_id(user_id, chat_id, topic_id, folder_id)
+
+        await status_msg.edit_text(
+            f"Files will now be uploaded to folder '{folder_name}'."
+        )
+    except Exception:
+        logging.exception("Failed to set folder")
+        await status_msg.edit_text(
+            "Failed to set folder. Please try again or check your connection."
         )

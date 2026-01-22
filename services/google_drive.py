@@ -29,13 +29,37 @@ def is_token_expired(expires_at: datetime | None) -> bool:
     return now >= expires_at - timedelta(minutes=5)
 
 
+def find_or_create_folder(credentials: Credentials, folder_name: str) -> str:
+    """Find existing folder by name or create a new one. Returns folder_id."""
+    service = build("drive", "v3", credentials=credentials)
+
+    # Search for existing folder
+    query = f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+    results = service.files().list(q=query, fields="files(id)").execute()
+
+    if results.get("files"):
+        return results["files"][0]["id"]
+
+    # Create folder if not found
+    metadata = {"name": folder_name, "mimeType": "application/vnd.google-apps.folder"}
+    folder = service.files().create(body=metadata, fields="id").execute()
+    return folder["id"]
+
+
 def upload_file(
-    credentials: Credentials, file_content: BytesIO, file_name: str, mime_type: str
+    credentials: Credentials,
+    file_content: BytesIO,
+    file_name: str,
+    mime_type: str,
+    folder_id: str | None = None,
 ) -> str:
     """Upload file to Google Drive and return the shareable link."""
     service = build("drive", "v3", credentials=credentials)
 
-    file_metadata = {"name": file_name}
+    file_metadata: dict[str, str | list[str]] = {"name": file_name}
+    if folder_id:
+        file_metadata["parents"] = [folder_id]
+
     media = MediaIoBaseUpload(file_content, mimetype=mime_type, resumable=True)
 
     file = (

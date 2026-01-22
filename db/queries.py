@@ -85,7 +85,7 @@ async def get_oauth_token(
     pool = get_pool()
     row = await pool.fetchrow(
         """
-        SELECT email, access_token, refresh_token, expires_at
+        SELECT email, access_token, refresh_token, expires_at, folder_id
         FROM oauth_tokens
         WHERE user_id = $1 AND chat_id = $2 AND topic_id IS NOT DISTINCT FROM $3
         """,
@@ -99,6 +99,7 @@ async def get_oauth_token(
             "access_token": row["access_token"],
             "refresh_token": row["refresh_token"],
             "expires_at": row["expires_at"],
+            "folder_id": row["folder_id"],
         }
     return None
 
@@ -138,4 +139,25 @@ async def update_oauth_token(
         topic_id,
         access_token,
         expires_at,
+    )
+
+
+async def update_folder_id(
+    user_id: int,
+    chat_id: int,
+    topic_id: int | None,
+    folder_id: str | None,
+) -> None:
+    """Set the upload folder for a user+chat+topic connection."""
+    pool = get_pool()
+    await pool.execute(
+        """
+        UPDATE oauth_tokens
+        SET folder_id = $4, updated_at = NOW()
+        WHERE user_id = $1 AND chat_id = $2 AND topic_id IS NOT DISTINCT FROM $3
+        """,
+        user_id,
+        chat_id,
+        topic_id,
+        folder_id,
     )

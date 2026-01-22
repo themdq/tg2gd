@@ -157,7 +157,10 @@ async def handle_file_upload(message: Message, bot: Bot) -> None:
 
     try:
         credentials = create_credentials(token["access_token"], token["refresh_token"])
-        drive_link = upload_file(credentials, file_content, file_name, mime_type)
+        folder_id = token.get("folder_id")
+        drive_link = upload_file(
+            credentials, file_content, file_name, mime_type, folder_id
+        )
         await status_msg.edit_text(f"Uploaded to Google Drive:\n{drive_link}")
     except RefreshError:
         await status_msg.edit_text(
